@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>Flower</title>
+    {{ JSGlue.include() }}
     <script src="{{url_for('static', filename='numjs.js')}}"></script>
     <script src="{{url_for('static', filename='three.js')}}"></script>
     <script src="{{url_for('static', filename='dat.gui.js')}}"></script>
@@ -22,16 +23,24 @@
     <script src="{{url_for('static', filename='display.js')}}"></script>
 
     <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/socket.io/1.3.6/socket.io.min.js"></script>
+
     <style>
     #c {
-    display: block; /* fix necessary to remove space at bottom of canvas */
-    width: 100vw;
-    height: 100vh;
+    /* display: block; fix necessary to remove space at bottom of canvas */
+    width: 70vw;
+    height: 70vh;
+
+    margin: 0;
+    position: absolute;
+    top: 50%;
+    -ms-transform: translateY(-50%);
+    transform: translateY(-50%);
     }
 
     body {
     margin: 0;
     overflow: hidden;
+    background-color: black;
     }
     </style>
 </head>
@@ -41,11 +50,14 @@
 
     <script type="text/javascript" charset="utf-8">
         var scene = prepare();
+
         let cfg = {
             frame : 0,
             depth : 500,
             step : 5,
-            dual :  false
+            dual :  false,
+            opacity : 0.8,
+            labels:[]
         }
         var socket = io.connect('http://' + document.domain + ':' + location.port);
         requestData();
@@ -62,8 +74,11 @@
             requestData()});
         gui.add(cfg, 'step').min(1).max(30).step(1).onChange(function(value) {
         requestData()});
+        gui.add(cfg, 'opacity').min(0).max(1).step(0.001).onChange(function(value) {
+        updateScene(cfg)});
         gui.add(cfg, 'dual').onChange(function(value) {
-        requestData()});
+        requestData();    
+    });
 
 
 
@@ -79,7 +94,11 @@
         socket.on('data',function(data){
             // console.log('data received:');
             // console.log('latent:', data)
-            display(data.edf,data.latent,data.dual,data.lbl,scene);
+            cfg.labels = data.lbl;
+            updateScene(cfg);
+            console.log("from index:",cfg.labels);
+            display(data.edf,data.latent,data.dual,scene);
+            // updateScene(cfg);
         })
     </script>
 

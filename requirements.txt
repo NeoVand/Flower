@@ -1,8 +1,9 @@
 numpy
 scikit-learn
 moviepy
-flask==1.1.1
+flask
 flask-socketio
-pylsl==1.13.1
-flask-wtf==0.14.2
+Flask-JSGlue
+flask-wtf
+pylsl
 pyedflib

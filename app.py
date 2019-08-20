@@ -2,6 +2,8 @@
 from flask import Flask,session, render_template, url_for, flash, request, redirect
 from wtforms import Form, BooleanField, StringField, PasswordField, validators, SelectField
 from flask_socketio import SocketIO, emit
+from flask_jsglue import JSGlue
+
 
 from pylsl import StreamInfo, StreamOutlet
 import glob
@@ -54,6 +56,7 @@ global MONO
 app = Flask(__name__)
 # app.secret_key = 'super secret key'
 socketio = SocketIO(app)
+jsglue = JSGlue(app)
 
 
 @app.route('/')
@@ -119,7 +122,7 @@ def preprocess(parser, args):
         print('channel names:')
         global MONO
         channel_names = f.getSignalLabels()
-        MONO = channel_names
+        MONO = channel_names[:32]
         print(channel_names)
 
         global DUAL
@@ -173,7 +176,6 @@ def preprocess(parser, args):
 
         print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
         print("dimensionality reduction ... ")
-        # model  = KernelPCA(n_components=3)
         model = MiniBatchDictionaryLearning(n_components=3, alpha=0.1,
                                                   n_iter=50, batch_size=30,
                                                   random_state=0,
