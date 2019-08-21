@@ -7,6 +7,7 @@
     <title>Flower</title>
     {{ JSGlue.include() }}
     <script src="{{url_for('static', filename='numjs.js')}}"></script>
+    <script src="{{url_for('static', filename='video.freqtimeupdate.js')}}"></script>
     <script src="{{url_for('static', filename='three.js')}}"></script>
     <script src="{{url_for('static', filename='dat.gui.js')}}"></script>
     <script src="{{url_for('static', filename='OrbitControls.js')}}"></script>
@@ -28,7 +29,7 @@
     #c {
     /* display: block; fix necessary to remove space at bottom of canvas */
     width: 70vw;
-    height: 70vh;
+    height: 70vw;
 
     margin: 0;
     position: absolute;
@@ -42,23 +43,57 @@
     overflow: hidden;
     background-color: black;
     }
+
+    #cd {
+        float: right;
+        margin: 0px 0px 15px 15px;
+        position: absolute;
+        right: 0px;
+        bottom: 0px;
+        width: 30vw;
+        height:  30vw;
+
+    }
     </style>
 </head>
 <body>
 
     <canvas id="c"></canvas>
 
+    <video id="cd" controls>
+        <source src="{{ url_for('static', filename='v.mp4') }}" type="video/mp4" >
+        Your browser does not support the video tag.
+    </video>
+
     <script type="text/javascript" charset="utf-8">
-        var scene = prepare();
+        
+        // let vid = document.getElementById('cd');
+
+        // vid.addEventListener('freqtimeupdate', function(e) {
+        //     console.log(vid.currentTime);
+        //     console.log(e);
+        // });
+
+        // vid.ontimeupdate  = function(){
+        //     var t = Math.round(vid.currentTime);
+        //     // console.log(t);
+        //     cfg.frame = start_sample+t*500+cfg.depth;
+        //     requestData();
+        //     };
+
+
+        let start_sample  = parseInt("{{start_sample}}");
+        let fr = parseFloat("{{fr}}");
 
         let cfg = {
-            frame : 0,
+            frame : start_sample+500,
             depth : 500,
             step : 5,
             dual :  false,
-            opacity : 0.8,
+            opacity : 0.6,
             labels:[]
         }
+       
         var socket = io.connect('http://' + document.domain + ':' + location.port);
         requestData();
 
@@ -67,14 +102,16 @@
         }
 
 
+        var scene = prepare();
+
         const gui = new dat.GUI();
-        gui.add(cfg, 'frame').min(0).max(10000).step(1).onChange(function(value) {
-            requestData()});
+        // gui.add(cfg, 'frame').min(0).max(10000).step(1).onChange(function(value) {
+        //     requestData()});
         gui.add(cfg, 'depth').min(2).max(2000).step(1).onChange(function(value) {
             requestData()});
-        gui.add(cfg, 'step').min(1).max(30).step(1).onChange(function(value) {
+        gui.add(cfg, 'step').min(1).max(10).step(1).onChange(function(value) {
         requestData()});
-        gui.add(cfg, 'opacity').min(0).max(1).step(0.001).onChange(function(value) {
+        gui.add(cfg, 'opacity').min(0).max(0.6).step(0.01).onChange(function(value) {
         updateScene(cfg)});
         gui.add(cfg, 'dual').onChange(function(value) {
         requestData();    
@@ -96,10 +133,42 @@
             // console.log('latent:', data)
             cfg.labels = data.lbl;
             updateScene(cfg);
-            console.log("from index:",cfg.labels);
             display(data.edf,data.latent,data.dual,scene);
             // updateScene(cfg);
         })
+
+
+        var reqId;
+        var  video = document.getElementById('cd'); 
+        var t = 0;
+        reqId = requestAnimationFrame(function play() {
+            // var t = Math.round(video.currentTime);
+            t += 1/100;
+            cfg.frame = Math.round(start_sample+t*500+cfg.depth);
+            requestData();
+            reqId = requestAnimationFrame(play);
+        });
+
+        // var startTracking = function() {
+        // //   console.log(Math.round(video.currentTime * 1000));
+        // reqId = requestAnimationFrame(function play() {
+        //     var t = Math.round(video.currentTime);
+        //             // console.log(t);
+        //     cfg.frame = start_sample+t*500+cfg.depth;
+        //     requestData();
+        //     reqId = requestAnimationFrame(play);
+        // });
+        // };
+
+        // var stopTracking = function () {
+        // if (reqId) {
+        //     cancelAnimationFrame(reqId);
+        // }
+        // };
+
+        // video.addEventListener('play', startTracking);
+
+        // video.addEventListener('pause', stopTracking);
     </script>
 
 </body>

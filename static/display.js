@@ -3,6 +3,8 @@ var loader = new THREE.FontLoader();
 var DUAL, LABELS
 const dual_sep = 10;
 
+// let vid = document.getElementById('cd');
+
 
 function make_curve_points(samples,latent,dual){
     let d,h;
@@ -35,7 +37,7 @@ function make_curve_points(samples,latent,dual){
 
     function make_curve_obj(valsR,i,col){
         var curveR = new THREE.CatmullRomCurve3( valsR , closed=true, curveType='catmullrom', tension=.8);
-        var pointsR = curveR.getPoints( 10+i );
+        var pointsR = curveR.getPoints( Math.round(3+0.7*i) );
         var geometryR = new THREE.BufferGeometry().setFromPoints( pointsR );
         var materialR = new THREE.LineBasicMaterial( { color : col,blending: THREE.NormalBlending,
             transparent: true,
@@ -46,7 +48,7 @@ function make_curve_points(samples,latent,dual){
     }
 
     if(dual){
-        d=4;
+        d=5.5;
         h=10;
     
         for(let i=0;i<moments;i++){
@@ -54,22 +56,22 @@ function make_curve_points(samples,latent,dual){
             var valsL = samples[i].slice(channels,2*channels);
             var col = colormap(latent[i]);
             
-            valsR = ringmap(valsR,i,dual_sep,true,2);
+            valsR = ringmap(valsR,i,dual_sep,true,1.5);
             curveR = make_curve_obj(valsR,i,col);
             curves.add(curveR);
 
-            valsL = ringmap(valsL,i,-dual_sep,false,2);
+            valsL = ringmap(valsL,i,-dual_sep,false,1.5);
             curveL = make_curve_obj(valsL,i,col);
             curves.add(curveL);
         }
     } else{
-        d=7;
+        d=11;
         h=10;
     
     for(let i=0;i<moments;i++){
         var vals = samples[i];
         var col = colormap(latent[i]);
-        vals = ringmap(vals,i);
+        vals = ringmap(vals,i,0,true,1.5);
         curve = make_curve_obj(vals,i,col);
         curves.add(curve);
     }
@@ -159,10 +161,10 @@ function updateScene(cfg){
         var lblsR = LABELS.slice(0,LABELS.length/2);
         var lblsL = LABELS.slice(LABELS.length/2,LABELS.length);
         var guides = new THREE.Group();
-        guideR = make_guide(lblsR,8);
+        guideR = make_guide(lblsR,8.5);
         guideR.position.x = dual_sep;
         guides.add(guideR);
-        guideL = make_guide(lblsL,8,-1);
+        guideL = make_guide(lblsL,8.5,-1);
         guideL.position.x = -dual_sep;
         guides.add(guideL);
 
@@ -173,7 +175,7 @@ function updateScene(cfg){
     
         else{
         var lbls = LABELS;
-        let guide = make_guide(lbls,10);
+        let guide = make_guide(lbls,14);
         guide.name = 'guide';
         scene.add(guide);
         
@@ -187,20 +189,32 @@ function updateScene(cfg){
 //#######################################################################################################
 
 function prepare(){
+    var size = 0.7*window.innerWidth;
     var clock = new THREE.Clock();
     const canvas = document.querySelector('#c');
     var devicePixelRatio = window.devicePixelRatio || 1;
-    canvas.width = window.innerWidth * devicePixelRatio;
-    canvas.height = window.innerHeight * devicePixelRatio;
+    canvas.width = size * devicePixelRatio;
+    canvas.height = size * devicePixelRatio;
     const scene = new THREE.Scene();
 
-    const renderer = new THREE.WebGLRenderer({canvas: canvas, antialias: true});
+    {
+        const color = 0x010101;  // white
+        const near = 1;
+        const far = 100;
+        scene.fog = new THREE.Fog(color, near, far);
+    }
+
+
+    var context = canvas.getContext( 'webgl2' );
+    var renderer = new THREE.WebGLRenderer( { canvas: canvas, context: context,  antialias: true } );
+
+    // const renderer = new THREE.WebGLRenderer({canvas: canvas, antialias: true});
     renderer.setPixelRatio( devicePixelRatio );
-    renderer.toneMapping = THREE.LinearToneMapping;
+    // renderer.toneMapping = THREE.LinearToneMapping;
     // const camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
-    const camera = new THREE.OrthographicCamera( window.innerWidth / - 100, window.innerWidth / 100, window.innerHeight / 100, window.innerHeight / - 100, 0, 2000 );
+    const camera = new THREE.OrthographicCamera( size / - 100, size / 100, size / 100, size / - 100, 0, 2000 );
     camera.position.z = 30;
-    camera.zoom = 0.65;
+    camera.zoom = 0.45;
     camera.updateProjectionMatrix();
     camera.lookAt(new THREE.Vector3(0,0,0));
     // renderer.render(scene,camera)
@@ -221,7 +235,7 @@ function prepare(){
     };
 
     var renderScene = new THREE.RenderPass( scene, camera );
-    var bloomPass = new THREE.UnrealBloomPass( new THREE.Vector2( window.innerWidth, window.innerHeight ), 1.5, 0.4, 0.85 );
+    var bloomPass = new THREE.UnrealBloomPass( new THREE.Vector2( size, size ), 1.5, 0.4, 0.85 );
     bloomPass.threshold = params.bloomThreshold;
     bloomPass.strength = params.bloomStrength;
     bloomPass.radius = params.bloomRadius;
@@ -230,13 +244,13 @@ function prepare(){
     composer.addPass( bloomPass );
 
     window.onresize = function () {
-        var width = window.innerWidth;
-        var height = window.innerHeight;
+        size = 0.7*window.innerWidth;
+        var width = size;
+        var height = size;
 
         var devicePixelRatio = window.devicePixelRatio || 1;
         canvas.width = width * devicePixelRatio;
         canvas.height = width * devicePixelRatio;
-        camera.aspect = width / height;
         camera.updateProjectionMatrix();
         renderer.setSize( width, height );
         renderer.setPixelRatio(devicePixelRatio);
@@ -268,6 +282,7 @@ function prepare(){
         camera.position.y += ( - mouseY - camera.position.y ) * .06;
 
         camera.lookAt( scene.position );
+
         requestAnimationFrame( animate );
         // const delta = clock.getDelta();
         composer.render();}
@@ -279,3 +294,12 @@ function prepare(){
     // window.addEventListener('resize', requestRenderIfNotRequested);
     return scene
 }
+
+// setInterval(function(){
+//     var  video = document.getElementById('cd'); 
+//     var t = Math.round(video.currentTime);
+//             // console.log(t);
+//     cfg.frame = start_sample+t*500+cfg.depth;
+//     requestData();
+//  }, 100);
+

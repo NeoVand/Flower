@@ -41,6 +41,7 @@ default_fr = 32.0
 
 dual_order = ['T8', 'C4', 'FC6', 'F8', 'Fp2', 'AF4', 'F4', 'Fz', 'FC2', 'Cz', 'CP2', 'Pz', 'Oz', 'O2', 'PO4', 'P4', 'P8', 'CP6',
                 'T7', 'C3', 'FC5', 'F7', 'Fp1', 'AF3', 'F3', 'Fz', 'FC1', 'Cz', 'CP1', 'Pz', 'Oz', 'O1', 'PO3', 'P3', 'P7', 'CP5']
+natural_order ='T8,C4,FC2,FC6,F4,F8,AF4,Fp2,Fp1,AF3,F7,FC5,F3,Fz,FC1,C3,T7,CP5,P7,P3,CP1,PO3,O1,Oz,O2,P8,PO4,P4,Pz,Cz,CP2,CP6'.split(',')
 
 
 global EDFPATH
@@ -61,11 +62,11 @@ jsglue = JSGlue(app)
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    return render_template('index.html',fr=FR, start_sample=START_SAMPLE)
 
 @socketio.on('connect')
 def connect():
-    emit('server', {'data': 'Connected'})
+    emit('server', {'message': 'Connected'})
     # for j in range(199):
     #     time.sleep(1000)
     #     print('data sent')
@@ -82,9 +83,9 @@ def send_data(dic):
         latent = W[dic['begin']:dic['end']:dic['step']]
         emit('data',json.loads(json.dumps({'dual':True,'edf':data,'latent':latent,'lbl':dual_order},cls=NumpyEncoder)))
     else:
-        data = EDF[dic['begin']:dic['end']:dic['step']]
+        data = EDF[dic['begin']:dic['end']:dic['step'],MONO]
         latent = W[dic['begin']:dic['end']:dic['step']]
-        emit('data',json.loads(json.dumps({'dual':False,'edf':data,'latent':latent,'lbl':MONO},cls=NumpyEncoder)))
+        emit('data',json.loads(json.dumps({'dual':False,'edf':data,'latent':latent,'lbl':natural_order},cls=NumpyEncoder)))
 def close_clip(vidya_clip):
     try:
         vidya_clip.reader.close()
@@ -109,6 +110,7 @@ def preprocess(parser, args):
         EDFPATH =os.path.normpath(edf_path)
         global VIDEOPATH
         VIDEOPATH = os.path.normpath(video_path)
+        copyfile(VIDEOPATH,os.path.join(os.curdir,'static','v.mp4'))
         global FR
         clip = e.VideoFileClip(VIDEOPATH)
         # print('video frame rate: ', FR)
@@ -122,7 +124,7 @@ def preprocess(parser, args):
         print('channel names:')
         global MONO
         channel_names = f.getSignalLabels()
-        MONO = channel_names[:32]
+        MONO = [channel_names.index(ch) for ch in natural_order]
         print(channel_names)
 
         global DUAL
