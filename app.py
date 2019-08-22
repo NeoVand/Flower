@@ -19,6 +19,10 @@ import numpy as np
 from sklearn.decomposition import FastICA, MiniBatchDictionaryLearning, KernelPCA
 import moviepy.editor as e
 import gc
+from scipy import interpolate
+# import multiprocessing
+# pool = multiprocessing.Pool()
+
 
 class NumpyEncoder(json.JSONEncoder):
     """ Special json encoder for numpy types """
@@ -175,14 +179,39 @@ def preprocess(parser, args):
         EDF = edf
         del edf
         gc.collect()
+        print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+        # print("Precomputing Splines ... ")
+        # mono_points = 500
+        # print(EDF.shape)
+        # monosplines = np.zeros((EDF.shape[0],mono_points))
+        # def spliner(l,d=11,amp=1.5,dir=1,offset=0,res=500):
+        #     channels = len(l)
+        #     X=np.zeros(channels)
+        #     Y=np.zeros(channels)
+        #     for i,p in enumerate(l):
+        #         theta = (i/channels)*2*np.pi
+        #         r = 0.5+(d+amp*p)
+        #         X[i] = offset+dir*r*np.cos(theta)
+        #         Y[i] = r*np.sin(theta)
+        #     X = np.r_[X, X[0]]
+        #     Y = np.r_[Y, Y[0]]
+        #     tck, u = interpolate.splprep([X, Y], s=0, per=True)
+        #     X, Y = interpolate.splev(np.linspace(0, 1, res), tck)
+        #     Z=np.zeros(res)
+        #     return np.stack([X,Y,Z],axis=1)
+        # monosplines = np.array([spliner(sample) for sample in EDF[:,MONO]])
+        # dualRsplines  = [spliner(sample,d=5.5,offset=10) for sample in EDF[:,DUAL[:len(DUAL)//2]]]
+        # dualLsplines  = [spliner(sample,d=5.5,offset=-10, dir=-1) for sample in EDF[:,DUAL[len(DUAL)//2:]]]
+
+        # print(f"the shape of the splines: {monosplines.shape}")
 
         print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
         print("dimensionality reduction ... ")
-        model = MiniBatchDictionaryLearning(n_components=3, alpha=0.1,
-                                                  n_iter=50, batch_size=30,
-                                                  random_state=0,
-                                                  positive_dict=True)
-        # model = FastICA(n_components=3, random_state=0)
+        # model = MiniBatchDictionaryLearning(n_components=3, alpha=0.1,
+        #                                           n_iter=50, batch_size=30,
+        #                                           random_state=0,
+        #                                           positive_dict=True)
+        model = FastICA(n_components=3, random_state=0)
         global W
         W = model.fit_transform(EDF)
 
@@ -192,7 +221,6 @@ def preprocess(parser, args):
         print('file processed. Data is ready to be served')
 
         
-        # TODO control the eeg vis using the video playback events, streaming the edf content
         # TODO construct the eeg visualization
 
 

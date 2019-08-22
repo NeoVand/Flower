@@ -1,13 +1,14 @@
 
 var loader = new THREE.FontLoader();
-var DUAL, LABELS
+var DUAL, LABELS, DEPTH
 const dual_sep = 10;
+const h = 10;
 
 // let vid = document.getElementById('cd');
 
 
 function make_curve_points(samples,latent,dual){
-    let d,h;
+    let d;
     // console.log(`latent has ${latent.length} length and ${latent[0].length} dims `)
     let curves = new THREE.Group();
     const moments = samples.length;
@@ -37,7 +38,7 @@ function make_curve_points(samples,latent,dual){
 
     function make_curve_obj(valsR,i,col){
         var curveR = new THREE.CatmullRomCurve3( valsR , closed=true, curveType='catmullrom', tension=.8);
-        var pointsR = curveR.getPoints( Math.round(3+0.7*i) );
+        var pointsR = curveR.getPoints( Math.round(10+0.5*i) );
         var geometryR = new THREE.BufferGeometry().setFromPoints( pointsR );
         var materialR = new THREE.LineBasicMaterial( { color : col,blending: THREE.NormalBlending,
             transparent: true,
@@ -48,30 +49,26 @@ function make_curve_points(samples,latent,dual){
     }
 
     if(dual){
-        d=5.5;
-        h=10;
-    
+        d=6.5;    
         for(let i=0;i<moments;i++){
             var valsR = samples[i].slice(0,channels);
             var valsL = samples[i].slice(channels,2*channels);
             var col = colormap(latent[i]);
             
-            valsR = ringmap(valsR,i,dual_sep,true,1.5);
+            valsR = ringmap(valsR,i,dual_sep,true,cfg.amp);
             curveR = make_curve_obj(valsR,i,col);
             curves.add(curveR);
 
-            valsL = ringmap(valsL,i,-dual_sep,false,1.5);
+            valsL = ringmap(valsL,i,-dual_sep,false,cfg.amp);
             curveL = make_curve_obj(valsL,i,col);
             curves.add(curveL);
         }
     } else{
-        d=11;
-        h=10;
-    
+        d=11;    
     for(let i=0;i<moments;i++){
         var vals = samples[i];
         var col = colormap(latent[i]);
-        vals = ringmap(vals,i,0,true,1.5);
+        vals = ringmap(vals,i,0,true,cfg.amp);
         curve = make_curve_obj(vals,i,col);
         curves.add(curve);
     }
@@ -86,6 +83,7 @@ function display(edf,latent,dual,scene){
     curves = make_curve_points(edf,latent,dual);
     scene.add(curves);
     DUAL = dual;
+    DEPTH = cfg.depth
     scene.children.forEach(function(child){
         if(child.name == "group"){
             child.traverse( function( node ) {
@@ -119,6 +117,18 @@ function updateScene(cfg){
         var rmaterial = new THREE.MeshBasicMaterial( { color: 0xffffff, side: THREE.DoubleSide, transparent:true, opacity:0.1 } );
         var rmesh = new THREE.Mesh( rgeometry, rmaterial );
         guide.add( rmesh );
+
+        var lgeometry =  new THREE.Geometry();
+        lgeometry.vertices.push(new THREE.Vector3( 0, 0, -h) );
+        lgeometry.vertices.push(new THREE.Vector3( 0.75*size, 0, 0) );
+        var lmaterial = new THREE.LineBasicMaterial( {
+            color: 0xffffff,
+            transparent:true,
+            opacity:0.3
+        } );
+        var ruler = new THREE.Line( lgeometry, lmaterial );
+        guide.add(ruler);
+
         const font_url = Flask.url_for("static", {"filename": "Courier New_Regular.json"});
     
         loader.load(font_url, function ( font ) {
@@ -143,15 +153,32 @@ function updateScene(cfg){
                 
                 guide.add(tmesh);
             }
+
+            var ruler_label = DEPTH/500;
+            var rtgeometry = new THREE.TextGeometry(ruler_label+' sec', {
+                font:font,
+                size: 0.5,
+                height: 0.01,
+                curveSegments: 5,
+            } );
+            var rtmaterial = new THREE.MeshBasicMaterial( { color: 0xffffff, side: THREE.DoubleSide, transparent:true, opacity:0.2 } );
+            rtgeometry.center();
+            var rtmesh = new THREE.Mesh( rtgeometry, rtmaterial );
+            rtmesh.position.x = 0.5*size;
+            rtmesh.position.y = 0.05*size;
+            rtmesh.position.z = - 0.5*size;
+            rtmesh.rotation.y = -Math.PI/4.5;
+            guide.add(rtmesh)
             
         } );
         return guide;
 
     }
 
-    if(cfg.dual!=DUAL){
+    if(cfg.dual!=DUAL ||  cfg.depth!=DEPTH){
         scene.children.forEach(child => (child.name == "guide" ) ? scene.remove(child) : null);
         DUAL = cfg.dual;
+        DEPTH =  cfg.depth;
     }
 
     if(!scene.getObjectByName('guide')){
@@ -161,10 +188,10 @@ function updateScene(cfg){
         var lblsR = LABELS.slice(0,LABELS.length/2);
         var lblsL = LABELS.slice(LABELS.length/2,LABELS.length);
         var guides = new THREE.Group();
-        guideR = make_guide(lblsR,8.5);
+        guideR = make_guide(lblsR,9.1);
         guideR.position.x = dual_sep;
         guides.add(guideR);
-        guideL = make_guide(lblsL,8.5,-1);
+        guideL = make_guide(lblsL,9.1,-1);
         guideL.position.x = -dual_sep;
         guides.add(guideL);
 
@@ -175,7 +202,7 @@ function updateScene(cfg){
     
         else{
         var lbls = LABELS;
-        let guide = make_guide(lbls,14);
+        let guide = make_guide(lbls,14.5);
         guide.name = 'guide';
         scene.add(guide);
         
@@ -278,8 +305,8 @@ function prepare(){
         // controls.update();
         var timer = 0.0001 * Date.now();
 
-        camera.position.x += ( mouseX - camera.position.x ) * .06;
-        camera.position.y += ( - mouseY - camera.position.y ) * .06;
+        camera.position.x += ( mouseX - camera.position.x ) * .09;
+        camera.position.y += ( - mouseY - camera.position.y ) * .09;
 
         camera.lookAt( scene.position );
 
