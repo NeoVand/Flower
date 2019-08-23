@@ -46,22 +46,31 @@
         float: right;
         margin: 0px 0px 15px 15px;
         position: absolute;
-        right: 0px;
-        bottom: 0px;
+        right: 15px;
+        bottom: 15vh;
         width: 30vw;
         height:  30vw;
+        border: 1px outset #333;
 
     }
+
+
+    .dg{
+    opacity: 0.8;}
+    /* #clickToPlay.clikToPlay{
+        display:none;
+    } */
+
     </style>
 </head>
 <body>
 
     <canvas id="c"></canvas>
-
     <video id="cd" controls>
         <source src="{{ url_for('static', filename='v.mp4') }}" type="video/mp4" >
         Your browser does not support the video tag.
     </video>
+
 
     <script type="text/javascript" charset="utf-8">        
         // let vid = document.getElementById('cd');
@@ -96,6 +105,7 @@
             opacity : 0.6,
             wheel:30,
             amp:1.5,
+            bw:false,
             labels:[]
         }
        
@@ -124,7 +134,9 @@
         gui.add(cfg, 'wheel').min(1).max(60).step(1).onChange(function(value) {
         });
         gui.add(cfg, 'dual').onChange(function(value) {
-        requestData();    
+        requestData(); });
+        gui.add(cfg, 'bw').onChange(function(value) {
+        requestData();     
     });
 
 
@@ -169,11 +181,15 @@
             cfg.frame =Math.max(cfg.frame-cfg.wheel*dy,1);
             requestData();
             wheel = true;
-            // video.currentTime = Math.round((cfg.frame-start_sample)/500);
+            video.currentTime = ((cfg.frame-start_sample)/500);
             // video.fastSeek(Math.round((cfg.frame-start_sample)/500));
             wheel = false;
         }
         canvas.addEventListener('wheel',zoom);
+
+        canvas.addEventListener('click',()=>{
+            // video.currentTime = ((cfg.frame-start_sample)/500);
+        });
 
 
 
@@ -192,19 +208,25 @@
         }
 
         video.onseeked = function(){
-            if(!video.playing){
-                clearTimeout(timer);
-                // cancelAnimationFrame(reqId);
-
-                if(!wheel){
-                    updateByVideo();
-                }                   
-            }
+            // if(!video.playing){
+            //     clearTimeout(timer);
+            //     // updateByVideo();
+            //     // cancelAnimationFrame(reqId);                 
+            // }
+            // if(!wheel){
+            //         updateByVideo();
+            //     }  
         }
 
         video.ontimeupdate  = function(event){
-            updateByVideo();                
-
+            if(!video.playing){
+                clearTimeout(timer);
+                // updateByVideo();
+                // cancelAnimationFrame(reqId);                 
+            }
+            if(!wheel){
+                    updateByVideo();
+                }  
         }
 
         video.onpause = function(){

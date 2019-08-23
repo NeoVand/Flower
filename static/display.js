@@ -17,7 +17,7 @@ function make_curve_points(samples,latent,dual){
     function ringmap(vals,i,offset=0,ccw = true,amp=1){
         var vector = vals.map(function(v,k){
             var theta = (k/channels)*2*Math.PI
-            var r = 0.5+(d+amp*v)*i/moments;
+            var r = 0.1+(d+amp*v)*i/moments;
             var x = ccw? offset+r*Math.cos(theta) : offset-r*Math.cos(theta)
             var y = r*Math.sin(theta);
             var z = i*(h/moments)-h;
@@ -40,7 +40,7 @@ function make_curve_points(samples,latent,dual){
         var curveR = new THREE.CatmullRomCurve3( valsR , closed=true, curveType='catmullrom', tension=.8);
         var pointsR = curveR.getPoints( Math.round(10+0.5*i) );
         var geometryR = new THREE.BufferGeometry().setFromPoints( pointsR );
-        var materialR = new THREE.LineBasicMaterial( { color : col,blending: THREE.NormalBlending,
+        var materialR = new THREE.LineBasicMaterial( { color:cfg.bw ? 0xffffff : col,blending: THREE.NormalBlending,
             transparent: true,
             depthTest: true,
             opacity:i/moments} );
@@ -114,7 +114,7 @@ function updateScene(cfg){
     function make_guide(lbls,size = 10.5, ccw =1){
         let guide = new THREE.Group();
         var rgeometry = new THREE.RingGeometry( size-1, size-1+0.05, 100 );
-        var rmaterial = new THREE.MeshBasicMaterial( { color: 0xffffff, side: THREE.DoubleSide, transparent:true, opacity:0.1 } );
+        var rmaterial = new THREE.MeshBasicMaterial( { color: 0xffffff, side: THREE.DoubleSide, transparent:true, opacity:0.2 } );
         var rmesh = new THREE.Mesh( rgeometry, rmaterial );
         guide.add( rmesh );
 

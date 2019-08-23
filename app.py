@@ -71,12 +71,6 @@ def index():
 @socketio.on('connect')
 def connect():
     emit('server', {'message': 'Connected'})
-    # for j in range(199):
-    #     time.sleep(1000)
-    #     print('data sent')
-    #     # emit('data',json.loads(json.dumps({'edf':EDF[j:j+1000], 
-    #     # 'start_sample':START_SAMPLE, 'fr':FR, 'fps':SPS},cls=NumpyEncoder)))
-    #     emit('data',{"data":10})
 
 @socketio.on('requestdata')
 def send_data(dic):
@@ -123,6 +117,9 @@ def preprocess(parser, args):
 
         print(f"file {EDFPATH} is chosen")
         f = pyedflib.EdfReader(EDFPATH)
+
+        equipment = f.getEquipment()
+        print(f'equipment: {equipment}')
         
         print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
         print('channel names:')
@@ -207,11 +204,11 @@ def preprocess(parser, args):
 
         print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
         print("dimensionality reduction ... ")
-        # model = MiniBatchDictionaryLearning(n_components=3, alpha=0.1,
-        #                                           n_iter=50, batch_size=30,
-        #                                           random_state=0,
-        #                                           positive_dict=True)
-        model = FastICA(n_components=3, random_state=0)
+        model = MiniBatchDictionaryLearning(n_components=3, alpha=0.1,
+                                                  n_iter=50, batch_size=30,
+                                                  random_state=0,
+                                                  positive_dict=True)
+        # model = FastICA(n_components=3, random_state=0)
         global W
         W = model.fit_transform(EDF)
 
