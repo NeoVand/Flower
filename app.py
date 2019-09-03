@@ -20,6 +20,11 @@ from sklearn.decomposition import FastICA, MiniBatchDictionaryLearning, KernelPC
 import moviepy.editor as e
 import gc
 from scipy import interpolate
+from PIL import Image
+import base64
+import io
+import re
+
 # import multiprocessing
 # pool = multiprocessing.Pool()
 
@@ -39,9 +44,10 @@ class NumpyEncoder(json.JSONEncoder):
         return json.JSONEncoder.default(self, obj)
 
 
-default_edf = "E:\\Dropbox (MIT)\\inSight\\Experiment\\Recordings\\combo\\07-20-23-42-56\\mmv@mit.edu\\20190801182425_mmvmitedu_recording.edf"
-default_video = "E:\\Dropbox (MIT)\\inSight\\Experiment\\Recordings\\combo\\07-20-23-42-56\\vid_07-20-23-42-56.mp4"
-default_fr = 32.0
+# default_edf = "E:\\Dropbox (MIT)\\inSight\\Experiment\\Recordings\\combo\\07-20-23-42-56\\mmv@mit.edu\\20190801182425_mmvmitedu_recording.edf"
+default_edf = "E:\\Dropbox (MIT)\\inSight\\Experiment\\Recordings\\music\\ladygaga\\mmv@mit.edu\\20190831005053_mmvmitedu_recording.edf"
+default_video = "E:\\Dropbox (MIT)\\inSight\\Experiment\\Recordings\\music\\ladygaga\\isthatalright.mp4"
+default_fr = 29.97
 
 dual_order = ['T8', 'C4', 'FC6', 'F8', 'Fp2', 'AF4', 'F4', 'Fz', 'FC2', 'Cz', 'CP2', 'Pz', 'Oz', 'O2', 'PO4', 'P4', 'P8', 'CP6',
                 'T7', 'C3', 'FC5', 'F7', 'Fp1', 'AF3', 'F3', 'Fz', 'FC1', 'Cz', 'CP1', 'Pz', 'Oz', 'O1', 'PO3', 'P3', 'P7', 'CP5']
@@ -63,14 +69,30 @@ app = Flask(__name__)
 socketio = SocketIO(app)
 jsglue = JSGlue(app)
 
+frame_buffer = []
+
 
 @app.route('/')
 def index():
-    return render_template('index.html',fr=FR, start_sample=START_SAMPLE)
+    return render_template('index.html',fr=FR, start_sample=START_SAMPLE,sps=SPS )
 
 @socketio.on('connect')
 def connect():
     emit('server', {'message': 'Connected'})
+
+@socketio.on('frame')
+def capture(img):
+    #convert byte to string
+    image_data = re.sub('^data:image/.+;base64,', '', img)
+    im = np.array(Image.open(io.BytesIO(base64.b64decode(image_data))))
+    # frame = np.array(Image.open(io.BytesIO(base64.b64decode(img))))
+    frame_buffer.append(im)
+    # print(frame)
+
+@socketio.on('download')
+def  download(fr):
+    clip = e.ImageSequenceClip(frame_buffer,fps=fr)
+    clip.write_videofile('out.mp4',fps=fr)
 
 @socketio.on('requestdata')
 def send_data(dic):
@@ -84,6 +106,7 @@ def send_data(dic):
         data = EDF[dic['begin']:dic['end']:dic['step'],MONO]
         latent = W[dic['begin']:dic['end']:dic['step']]
         emit('data',json.loads(json.dumps({'dual':False,'edf':data,'latent':latent,'lbl':natural_order},cls=NumpyEncoder)))
+
 def close_clip(vidya_clip):
     try:
         vidya_clip.reader.close()

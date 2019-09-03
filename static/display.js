@@ -2,13 +2,14 @@
 var loader = new THREE.FontLoader();
 var DUAL, LABELS, DEPTH
 const dual_sep = 10;
-const h = 10;
+var h = 25;
 
 // let vid = document.getElementById('cd');
 
 
 function make_curve_points(samples,latent,dual){
     let d;
+    h=cfg.h;
     // console.log(`latent has ${latent.length} length and ${latent[0].length} dims `)
     let curves = new THREE.Group();
     const moments = samples.length;
@@ -113,6 +114,23 @@ function updateScene(cfg){
 
     function make_guide(lbls,size = 10.5, ccw =1){
         let guide = new THREE.Group();
+
+        var radius = size;
+        var radialSegments = 100;
+        var material = new THREE.MeshBasicMaterial({
+        color: 0x090909,
+        });
+        var hemiSphereGeom = new THREE.SphereBufferGeometry(radius, radialSegments, Math.round(radialSegments / 4), 0, Math.PI * 2, 0, Math.PI * 0.5);
+        var hemiSphere = new THREE.Mesh(hemiSphereGeom, material);
+        hemiSphere.rotation.x = -Math.PI/2;
+        // hemiSphere.scale.y = 2;
+        guide.add(hemiSphere);
+
+
+
+
+
+
         var rgeometry = new THREE.RingGeometry( size-1, size-1+0.05, 100 );
         var rmaterial = new THREE.MeshBasicMaterial( { color: 0xffffff, side: THREE.DoubleSide, transparent:true, opacity:0.2 } );
         var rmesh = new THREE.Mesh( rgeometry, rmaterial );
@@ -154,7 +172,7 @@ function updateScene(cfg){
                 guide.add(tmesh);
             }
 
-            var ruler_label = DEPTH/500;
+            var ruler_label = DEPTH/sps;
             var rtgeometry = new THREE.TextGeometry(ruler_label+' sec', {
                 font:font,
                 size: 0.5,
@@ -210,6 +228,67 @@ function updateScene(cfg){
         }
 
     }
+}
+
+function transpose(array){
+    newArray = array[0].map(function(col, i){
+        return array.map(function(row){
+            return row[i];
+        });
+    });
+    return newArray
+} 
+
+function clearScene(){
+    scene.children.forEach(child => (child.name == "guide" ) ? scene.remove(child) : null);
+    scene.children.forEach(child => (child.name == "group" ) ? scene.remove(child) : null);
+};
+
+function linedisplay(edf,latent,scene){
+    scene.children.forEach(child => (child.name == "group" ) ? scene.remove(child) : null)
+    var  lines = make_lines(edf,latent);
+    scene.add(lines);
+}
+
+function make_lines(samples,latent){
+    let lines = new THREE.Group();
+    let chans = transpose(samples);
+    let chanCount =chans.length;
+    let W = canvas.width/100;
+    let H = canvas.height/100;
+    function chanmap(vals,i,amp=1){
+        var vector = vals.map(function(v,k){
+            var x = -W/2+k*W*cfg.step/cfg.depth
+            var y = -H/2+i*1.5+amp*v
+            var z = 0
+            var vec = new THREE.Vector3(x,y,z);
+            return vec;
+        });
+        return vector;
+    }
+
+    function make_line_obj(valsR,i){
+        var curveR = new THREE.CatmullRomCurve3( valsR , closed=false, curveType='catmullrom', tension=.8);
+        var pointsR = curveR.getPoints( Math.round(cfg.depth/cfg.step) );
+        var geometryR = new THREE.BufferGeometry().setFromPoints( pointsR );
+        var materialR = new THREE.LineBasicMaterial( { color:0xffffff,blending: THREE.NormalBlending,
+            transparent: true,
+            depthTest: true,
+            opacity:cfg.opacity} );
+        var curveObjectR = new THREE.Line( geometryR, materialR );
+        return curveObjectR;
+    }
+
+    for(let i=0;i<chanCount;i++){
+        var vals = chans[i];
+        vals = chanmap(vals,i,cfg.amp);
+        curve = make_line_obj(vals,i);
+        lines.add(curve);
+    }
+
+    lines.name = "group";
+    return lines;
+    
 }
 
 
@@ -294,19 +373,24 @@ function prepare(){
     function onDocumentMouseMove( event ) {
 
         var rect = event.target.getBoundingClientRect();
-        mouseX = ( event.clientX - rect.right/2 ) / 60;
-        mouseY = ( event.clientY - rect.bottom/2 ) / 60;
+        mouseX = -( event.clientX - rect.right/2 ) / 20;
+        mouseY = -( event.clientY - rect.bottom/2 ) / 20;
 
+    }
+    function onMouseExitCanvas( event ){
+        mouseX = 0;
+        mouseY = 0;
     }
 
     canvas.addEventListener( 'mousemove', onDocumentMouseMove, false );
+    canvas.addEventListener('mouseleave', onMouseExitCanvas , false);
 
     function animate() {
         // controls.update();
         var timer = 0.0001 * Date.now();
 
-        camera.position.x += ( mouseX - camera.position.x ) * .09;
-        camera.position.y += ( - mouseY - camera.position.y ) * .09;
+        camera.position.x += ( mouseX - camera.position.x ) * .1;
+        camera.position.y += ( - mouseY - camera.position.y ) * .1;
 
         camera.lookAt( scene.position );
 

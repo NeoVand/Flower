@@ -6,7 +6,6 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>Flower</title>
     {{ JSGlue.include() }}
-    <script src="{{url_for('static', filename='numjs.js')}}"></script>
     <script src="{{url_for('static', filename='three.js')}}"></script>
     <script src="{{url_for('static', filename='dat.gui.js')}}"></script>
     <script src="{{url_for('static', filename='OrbitControls.js')}}"></script>
@@ -18,6 +17,7 @@
     <script src="{{url_for('static', filename='ConvolutionShader.js')}}"></script>
     <script src="{{url_for('static', filename='LuminosityHighPassShader.js')}}"></script>
     <script src="{{url_for('static', filename='UnrealBloomPass.js')}}"></script>
+    <script src="{{url_for('static', filename='CCapture.all.min.js')}}"></script>
 
     <script src="{{url_for('static', filename='display.js')}}"></script>
 
@@ -26,8 +26,8 @@
     <style>
     #c {
     /* display: block; fix necessary to remove space at bottom of canvas */
-    width: 70vw;
-    height: 70vw;
+    width: 65vw;
+    height: 65vw;
 
     margin: 0;
     position: absolute;
@@ -39,7 +39,7 @@
     body {
     margin: 0;
     overflow: hidden;
-    background-color: black;
+    background-color:black;
     }
 
     #cd {
@@ -47,9 +47,9 @@
         margin: 0px 0px 15px 15px;
         position: absolute;
         right: 15px;
-        bottom: 15vh;
-        width: 30vw;
-        height:  30vw;
+        bottom: 2vh;
+        width: 35vw;
+        height:  35vw;
         border: 1px outset #333;
 
     }
@@ -96,6 +96,11 @@
 
         let start_sample  = parseInt("{{start_sample}}");
         let fr = parseFloat("{{fr}}");
+        let sps = parseFloat("{{sps}}");
+        var capturer;
+        var capID;
+        const canvas = document.querySelector('#c');
+
 
         let cfg = {
             frame : start_sample,
@@ -106,7 +111,13 @@
             wheel:30,
             amp:1.5,
             bw:false,
-            labels:[]
+            h:14,
+            labels:[],
+            flower: true,
+            // capture : false,
+            // cap_fr: 50,
+            // cap_end:10,
+            // image:null
         }
        
         var socket = io.connect('http://' + document.domain + ':' + location.port);
@@ -116,15 +127,33 @@
             socket.emit('requestdata',{begin:Math.max(cfg.frame-cfg.depth,0),end:cfg.frame,step:cfg.step,dual:cfg.dual});
         }
 
+        function sendframe(){
+            socket.emit('frame',cfg.image)
+        }
+
+        // function captureCanvas(){
+        //     requestData();
+        //     var dataURL = canvas.toDataURL();
+        //     return dataURL;
+        // }
+
 
         var scene = prepare();
 
         const gui = new dat.GUI();
-        // gui.add(cfg, 'frame').min(0).max(10000).step(1).onChange(function(value) {
-        //     requestData()});
+
+        gui.add(cfg, 'flower').onChange(function(value) {
+            clearScene();
+            cfg.dual = false;
+            requestData();
+        });
+
         gui.add(cfg, 'depth').min(2).max(2000).step(1).onChange(function(value) {
             requestData();
         });
+        // gui.add(cfg, 'h').min(0).max(50).step(1).onChange(function(value) {
+        //     requestData();
+        // });
         gui.add(cfg, 'step').min(1).max(10).step(1).onChange(function(value) {
         requestData()});
         gui.add(cfg, 'amp').min(0.01).max(3).step(0.001).onChange(function(value) {
@@ -136,8 +165,33 @@
         gui.add(cfg, 'dual').onChange(function(value) {
         requestData(); });
         gui.add(cfg, 'bw').onChange(function(value) {
-        requestData();     
-    });
+        requestData();});
+        // gui.add(cfg, 'capture').listen().onChange(function(value){
+        //     if(value){
+        //         // if(cfg.frame>=30000){
+        //         //     cfg.capture=false;
+        //         //     socket.emit('download',cfg.cap_fr);
+        //         // }
+        //         (async function() {
+
+        //             for(let i=0;i<=40;i++){
+        //                 cfg.frame +=10;
+        //                 console.log('frame: ',i);
+        //                 cfg.image = await captureCanvas();
+
+        //                 sendframe();
+        //             if(i==40){
+        //                 cfg.capture = false;
+        //                 socket.emit('download',cfg.cap_fr);
+        //             }
+        //         }
+
+        //         })();
+
+
+        //     }            
+            
+        // })
 
 
 
@@ -151,12 +205,17 @@
 
         // socket.on('server',(msg)=>console.log(msg));
         socket.on('data',function(data){
-            // console.log('data received:');
-            // console.log('latent:', data)
+
             cfg.labels = data.lbl;
-            updateScene(cfg);
-            display(data.edf,data.latent,data.dual,scene);
-            // updateScene(cfg);
+            if(cfg.flower){
+                updateScene(cfg);
+                display(data.edf,data.latent,data.dual,scene);
+            }
+            else{
+                linedisplay(data.edf,data.latent,scene);
+
+            }
+
         })
 
 
@@ -168,22 +227,21 @@
         var weel = false;
 
         function updateByVideo(){
-            cfg.frame = Math.round(start_sample+video.currentTime*500);
+            cfg.frame = Math.round(start_sample+video.currentTime*sps);
             requestData();
         }
 
 
-        const canvas = document.querySelector('#c');
         function zoom(event) {
             event.preventDefault();
 
             var dy = event.deltaY;
             cfg.frame =Math.max(cfg.frame-cfg.wheel*dy,1);
             requestData();
-            wheel = true;
-            video.currentTime = ((cfg.frame-start_sample)/500);
+            // wheel = true;
+            video.currentTime = ((cfg.frame-start_sample)/sps);
             // video.fastSeek(Math.round((cfg.frame-start_sample)/500));
-            wheel = false;
+            // wheel = false;
         }
         canvas.addEventListener('wheel',zoom);
 
@@ -199,7 +257,7 @@
             reqId = requestAnimationFrame(function play(time_stamp) {
                 var delta = time_stamp - now;
                 timer = setTimeout(() => {
-                    cfg.frame +=Math.round((delta/1000)*500);
+                    cfg.frame +=Math.round((delta/1000)*sps);
                     requestData();
                     reqId = requestAnimationFrame(play);
                 }, (500)/32);
@@ -224,9 +282,7 @@
                 // updateByVideo();
                 // cancelAnimationFrame(reqId);                 
             }
-            if(!wheel){
-                    updateByVideo();
-                }  
+            updateByVideo();  
         }
 
         video.onpause = function(){
